@@ -1,0 +1,207 @@
+# Continuous integration for KisanSaathi.
+#
+# Three parallel jobs, because they fail for unrelated reasons and each is worth
+# running even when the others are broken:
+#
+#   backend      the suite on SQLite *and* on PostgreSQL. Production runs
+#                PostgreSQL, so a test that only passes on SQLite is not a pass.
+#                The PostgreSQL leg also applies the migrations and seeds twice,
+#                because idempotency is a property of the seeder, not a hope.
+#   frontend     strict types, lint, and the production build.
+#   integration  the real thing: both images built by their own Dockerfiles,
+#                served through nginx, checked by the API contract and then by
+#                real Chrome walking every route as all eight demo accounts. This
+#                is the job that catches a blank page, which types, lint, the
+#                build and the contract check all pass straight through.
+#
+# Every step calls a Makefile target, so CI runs what a developer runs.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+# Cancel a superseded run on the same branch instead of queueing behind it.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: '3.13'
+  NODE_VERSION: '22'
+  # A placeholder, not a secret and not a real key. The test suite sets its own
+  # default; this keeps the migration and seeder steps explicit about it.
+  JWT_SECRET_KEY: ci-not-a-real-secret-0123456789abcdef0123456789abcdef
+
+jobs:
+  backend:
+    name: backend (${{ matrix.database }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - database: sqlite
+            # conftest.py falls back to an in-memory SQLite database when
+            # DATABASE_URL is unset. It has to be unset, not empty: it uses
+            # setdefault, so DATABASE_URL='' would win and connect to nothing.
+            database_url: ''
+          - database: postgres
+            database_url: postgresql+psycopg://kisan:ci_password@localhost:5432/kisansaathi_ci
+    services:
+      postgres:
+        # Always declared, and only used by the postgres leg. An idle container
+        # in the sqlite leg costs a few seconds and keeps the matrix simple.
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kisan
+          POSTGRES_PASSWORD: ci_password
+          POSTGRES_DB: kisansaathi_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kisan -d kisansaathi_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+
+      - name: install
+        run: make install
+
+      - name: ruff check
+        run: cd backend && ../.venv/bin/ruff check app tests alembic
+
+      - name: ruff format
+        run: cd backend && ../.venv/bin/ruff format --check app tests alembic
+
+      - name: tests on sqlite
+        if: matrix.database == 'sqlite'
+        run: make test
+
+      - name: tests on postgres
+        if: matrix.database == 'postgres'
+        env:
+          DATABASE_URL: ${{ matrix.database_url }}
+        run: make test
+
+      # The README's configuration table is generated from config.py, so a new
+      # setting that nobody documented is a failed check, not a stale document.
+      - name: config table matches config.py
+        run: .venv/bin/python scripts/gen_config_table.py --check
+
+      - name: migrations and seeder
+        if: matrix.database == 'postgres'
+        env:
+          DATABASE_URL: ${{ matrix.database_url }}
+        run: |
+          cd backend
+          ../.venv/bin/alembic upgrade head
+          ../.venv/bin/alembic check
+          ../.venv/bin/python -m app.db.seed
+          # Idempotent: a second run must not duplicate anything.
+          ../.venv/bin/python -m app.db.seed
+          ../.venv/bin/python - <<'PY'
+          import os
+
+          import sqlalchemy as sa
+
+          engine = sa.create_engine(os.environ["DATABASE_URL"])
+          expected = {
+              "users": 8,
+              "farm_lots": 2,
+              "buyer_demands": 2,
+              "orders": 1,
+              "market_prices": 10800,
+          }
+          with engine.connect() as conn:
+              for table, want in expected.items():
+                  got = conn.execute(sa.text(f"SELECT count(*) FROM {table}")).scalar()
+                  print(f"{table}: {got}")
+                  assert got == want, f"{table}: expected {want}, found {got}"
+          print("seeder is idempotent")
+          PY
+
+  frontend:
+    name: frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: install
+        run: cd frontend && npm ci
+
+      - name: typecheck
+        run: cd frontend && npm run typecheck
+
+      - name: lint
+        run: cd frontend && npm run lint
+
+      - name: production build
+        run: cd frontend && npm run build
+
+  integration:
+    name: integration (docker, api contract, chrome)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build and start the whole stack
+        run: make up
+
+      - name: api contract
+        run: make contract
+
+      - name: find chrome
+        id: chrome
+        run: |
+          # The runner image ships Chrome. If that ever stops being true, install
+          # a copy rather than failing with "chrome not found", which says
+          # nothing about the change that actually caused it.
+          path="$(command -v google-chrome || command -v google-chrome-stable || true)"
+          if [ -z "$path" ]; then
+            echo "==> no system chrome; fetching one"
+            path="$(npx --yes @puppeteer/browsers install chrome@stable \
+              --path "$HOME/.cache/chrome-for-testing" --format '{{path}}')"
+          fi
+          if [ -z "$path" ] || [ ! -x "$path" ]; then
+            echo "could not find or install google chrome" >&2
+            exit 1
+          fi
+          echo "path=$path" >> "$GITHUB_OUTPUT"
+          "$path" --version
+
+      - name: every route, every account, in a real browser
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.path }}
+        run: make ui
+
+      - name: logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 200
+
+      - name: stop the stack
+        if: always()
+        run: make down
