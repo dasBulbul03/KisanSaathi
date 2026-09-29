@@ -1,0 +1,77 @@
+# --- python ----------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.egg-info/
+build/
+dist/
+
+# --- node ------------------------------------------------------------------
+node_modules/
+frontend/dist/
+.vite/
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# --- secrets and local config ---------------------------------------------
+# `.env` holds real secrets; `.env.example` is the committed template.
+.env
+.env.local
+.env.*.local
+!.env.example
+*.pem
+*.key
+secrets/
+# Live credentials in readable form, written by `make secrets`. Same rule as
+# .env: the values are real, so the file must never be committed or shared.
+SECRETS.local.md
+
+# --- databases -------------------------------------------------------------
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+pgdata/
+postgres-data/
+
+# --- uploaded media --------------------------------------------------------
+# Served by the app, never committed: it is user content, not source.
+backend/media/
+media/
+!media/.gitkeep
+
+# --- operating systems and editors ----------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.\#*
+\#*\#
+
+# --- logs and scratch ------------------------------------------------------
+*.log
+npm-debug.log*
+logs/
+tmp/
+.cache/

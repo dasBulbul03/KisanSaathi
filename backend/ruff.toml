@@ -1,0 +1,24 @@
+# Ruff configuration.
+#
+# This used to live in pytest.ini, where ruff never read it: the effective
+# line length was silently 88 and only the default rule set was enabled.
+# ruff only reads pyproject.toml / ruff.toml / .ruff.toml, so the settings that
+# were always intended to apply now actually do.
+line-length = 100
+target-version = "py312"
+
+[lint]
+select = ["E", "F", "I", "UP", "B", "C4", "SIM", "RUF"]
+# B008: FastAPI Depends() in defaults is the documented style
+# RUF001/2/3: user facing Marathi/English strings contain unicode on purpose
+# SIM108: a ternary is not always clearer than an if/else block
+# SIM102: a nested guard with its own comment reads better than a flat boolean
+#         chain of four conditions
+# UP038: deprecated rule. isinstance(x, (A, B)) reads better than A | B here.
+# RUF005: list(history or []) + [entry] states "append an entry" more clearly
+#         than [*(history or []), entry].
+ignore = ["B008", "RUF001", "RUF002", "RUF003", "SIM108", "SIM102", "UP038", "RUF005"]
+
+[lint.per-file-ignores]
+"tests/*" = ["E501"]
+"alembic/*" = ["E501"]

@@ -1,0 +1,243 @@
+"""Domain enumerations shared by models, schemas and services."""
+
+from __future__ import annotations
+
+from enum import StrEnum
+
+
+class StrEnum(StrEnum):
+    """Python 3.11+ StrEnum base alias."""
+
+
+class UserRole(StrEnum):
+    FARMER = "FARMER"
+    FPO = "FPO"
+    BUYER = "BUYER"
+    ADMIN = "ADMIN"
+    LOGISTICS_PARTNER = "LOGISTICS_PARTNER"
+    QUALITY_INSPECTOR = "QUALITY_INSPECTOR"
+
+
+class UserStatus(StrEnum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    REJECTED = "REJECTED"
+    INACTIVE = "INACTIVE"
+
+
+class VerificationStatus(StrEnum):
+    PENDING = "PENDING"
+    VERIFIED = "VERIFIED"
+    SUSPENDED = "SUSPENDED"
+    REJECTED = "REJECTED"
+
+
+class SellerType(StrEnum):
+    FARMER = "FARMER"
+    FPO = "FPO"
+
+
+class LotStatus(StrEnum):
+    DRAFT = "DRAFT"
+    PUBLISHED = "PUBLISHED"
+    UNDER_OFFER = "UNDER_OFFER"
+    SOLD = "SOLD"
+    IN_TRANSIT = "IN_TRANSIT"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class QualityGrade(StrEnum):
+    GRADE_A = "A"
+    GRADE_B = "B"
+    GRADE_C = "C"
+
+    @property
+    def label(self) -> str:
+        return f"Grade {self.value}"
+
+
+class InspectionStatus(StrEnum):
+    PENDING = "PENDING"
+    CONFIRMED = "CONFIRMED"
+    REJECTED = "REJECTED"
+
+
+class DemandStatus(StrEnum):
+    OPEN = "OPEN"
+    PARTIALLY_FULFILLED = "PARTIALLY_FULFILLED"
+    FULFILLED = "FULFILLED"
+    CLOSED = "CLOSED"
+    EXPIRED = "EXPIRED"
+
+
+class OfferStatus(StrEnum):
+    PENDING = "PENDING"
+    ACCEPTED = "ACCEPTED"
+    REJECTED = "REJECTED"
+    COUNTERED = "COUNTERED"
+    WITHDRAWN = "WITHDRAWN"
+    EXPIRED = "EXPIRED"
+
+
+class OrderStatus(StrEnum):
+    OFFER_ACCEPTED = "OFFER_ACCEPTED"
+    ORDER_CREATED = "ORDER_CREATED"
+    LOGISTICS_ASSIGNED = "LOGISTICS_ASSIGNED"
+    PICKUP_SCHEDULED = "PICKUP_SCHEDULED"
+    IN_TRANSIT = "IN_TRANSIT"
+    DELIVERED = "DELIVERED"
+    QUALITY_CONFIRMED = "QUALITY_CONFIRMED"
+    PAYMENT_PENDING = "PAYMENT_PENDING"
+    PAYMENT_COMPLETED = "PAYMENT_COMPLETED"
+    COMPLETED = "COMPLETED"
+    CANCELLED = "CANCELLED"
+
+
+class LogisticsStatus(StrEnum):
+    REQUESTED = "REQUESTED"
+    ASSIGNED = "ASSIGNED"
+    PICKUP_SCHEDULED = "PICKUP_SCHEDULED"
+    IN_TRANSIT = "IN_TRANSIT"
+    DELIVERED = "DELIVERED"
+    CANCELLED = "CANCELLED"
+
+
+class VehicleType(StrEnum):
+    TEMPO = "TEMPO"
+    MINI_TRUCK = "MINI_TRUCK"
+    TRUCK_10FT = "TRUCK_10FT"
+    TRUCK_14FT = "TRUCK_14FT"
+    TRUCK_17FT = "TRUCK_17FT"
+    REFRIGERATED = "REFRIGERATED"
+
+
+class StorageType(StrEnum):
+    OWN_GODOWN = "OWN_GODOWN"
+    RENTED_GODOWN = "RENTED_GODOWN"
+    FPO_STORE = "FPO_STORE"
+    COLD_STORAGE = "COLD_STORAGE"
+    OPEN_STORAGE = "OPEN_STORAGE"
+
+
+class PaymentStatus(StrEnum):
+    PENDING = "PENDING"
+    PROCESSING = "PROCESSING"
+    PAID = "PAID"
+    FAILED = "FAILED"
+    DISPUTED = "DISPUTED"
+
+
+class PaymentMethod(StrEnum):
+    BANK_TRANSFER = "BANK_TRANSFER"
+    NEFT = "NEFT"
+    RTGS = "RTGS"
+    IMPS = "IMPS"
+    UPI = "UPI"
+    CHEQUE = "CHEQUE"
+    CASH = "CASH"
+
+
+class GrievanceCategory(StrEnum):
+    QUALITY_MISMATCH = "QUALITY_MISMATCH"
+    QUANTITY_MISMATCH = "QUANTITY_MISMATCH"
+    PAYMENT_DELAY = "PAYMENT_DELAY"
+    DELIVERY_ISSUE = "DELIVERY_ISSUE"
+    DAMAGED_GOODS = "DAMAGED_GOODS"
+    BUYER_ISSUE = "BUYER_ISSUE"
+    TRANSPORTER_ISSUE = "TRANSPORTER_ISSUE"
+    OTHER = "OTHER"
+
+
+class GrievanceStatus(StrEnum):
+    OPEN = "OPEN"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    RESOLVED = "RESOLVED"
+    REJECTED = "REJECTED"
+    ESCALATED = "ESCALATED"
+
+
+class Priority(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+    CRITICAL = "CRITICAL"
+
+
+class NotificationType(StrEnum):
+    NEW_OFFER = "NEW_OFFER"
+    COUNTER_OFFER = "COUNTER_OFFER"
+    OFFER_ACCEPTED = "OFFER_ACCEPTED"
+    OFFER_REJECTED = "OFFER_REJECTED"
+    OFFER_EXPIRING = "OFFER_EXPIRING"
+    ORDER_UPDATE = "ORDER_UPDATE"
+    LOGISTICS_UPDATE = "LOGISTICS_UPDATE"
+    PAYMENT_UPDATE = "PAYMENT_UPDATE"
+    GRIEVANCE_UPDATE = "GRIEVANCE_UPDATE"
+    BUYER_VERIFICATION = "BUYER_VERIFICATION"
+    QUALITY_INSPECTION = "QUALITY_INSPECTION"
+    MARKET_INSIGHT = "MARKET_INSIGHT"
+    LOT_UPDATE = "LOT_UPDATE"
+    SYSTEM = "SYSTEM"
+
+
+class MarketType(StrEnum):
+    APMC_MANDI = "APMC_MANDI"
+    FARM_GATE = "FARM_GATE"
+    COLLECTION_CENTRE = "COLLECTION_CENTRE"
+    PRIVATE_HUB = "PRIVATE_HUB"
+    ORGANIC_MANDI = "ORGANIC_MANDI"
+
+
+class PriceSource(StrEnum):
+    DEMO = "DEMO"
+    AGMARKET_API = "AGMARKET_API"
+    STATE_APMC = "STATE_APMC"
+    MANUAL = "MANUAL"
+    PARTNER_API = "PARTNER_API"
+
+
+class BuyerType(StrEnum):
+    WHOLESALER = "WHOLESALER"
+    RETAILER = "RETAILER"
+    PROCESSOR = "PROCESSOR"
+    EXPORTER = "EXPORTER"
+    HOTEL_CHAIN = "HOTEL_CHAIN"
+    GOVERNMENT_BODY = "GOVERNMENT_BODY"
+    INSTITUTION = "INSTITUTION"
+    NGO = "NGO"
+
+
+class PaymentTerms(StrEnum):
+    ADVANCE = "ADVANCE"
+    COD = "COD"
+    NET_7 = "NET_7"
+    NET_15 = "NET_15"
+    NET_30 = "NET_30"
+
+
+class SyncStatus(StrEnum):
+    RUNNING = "RUNNING"
+    SUCCESS = "SUCCESS"
+    FAILED = "FAILED"
+
+
+class AIConversationMode(StrEnum):
+    FARMER_ASSISTANT = "FARMER_ASSISTANT"
+    FPO_ASSISTANT = "FPO_ASSISTANT"
+    BUYER_ASSISTANT = "BUYER_ASSISTANT"
+    ADMIN_ANALYST = "ADMIN_ANALYST"
+
+
+class ConfidenceLevel(StrEnum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
+
+
+class MessageRole(StrEnum):
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+    TOOL = "tool"

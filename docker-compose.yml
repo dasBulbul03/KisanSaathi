@@ -1,0 +1,101 @@
+# Local stack: Postgres, the API and the frontend.
+#
+#   cp .env.example .env      # then edit the secrets
+#   docker compose up --build
+#
+# The API waits for Postgres to be healthy, applies the Alembic migrations and
+# seeds demo data on first run, so `http://localhost:8080` comes up with a
+# working marketplace rather than an empty schema.
+
+name: kisansaathi
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-kisan}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-kisansaathi}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # Named user and db, so this passes on a database that exists but is
+      # still running its first-run bootstrap scripts.
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-kisan} -d ${POSTGRES_DB:-kisansaathi}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # Not published by default: nothing outside the compose network needs it.
+    expose:
+      - "5432"
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    # Migrations and seeding both need the schema to be up, so nothing else may
+    # start until the API reports ready.
+    environment:
+      ENVIRONMENT: ${ENVIRONMENT:-production}
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-kisan}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-kisansaathi}
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:?generate one with openssl rand -hex 32}
+      ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-480}
+      REFRESH_TOKEN_EXPIRE_DAYS: ${REFRESH_TOKEN_EXPIRE_DAYS:-14}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
+      DEMO_MODE: ${DEMO_MODE:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      DOCS_ENABLED: ${DOCS_ENABLED:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      AI_PROVIDER: ${AI_PROVIDER:-nvidia}
+      NVIDIA_API_KEY: ${NVIDIA_API_KEY:-}
+      MARKET_DATA_PROVIDER: ${MARKET_DATA_PROVIDER:-demo}
+      NOTIFICATION_PROVIDER: ${NOTIFICATION_PROVIDER:-database}
+    volumes:
+      - media:/app/media
+    # Migrate and seed before serving. Seeding is idempotent, so a restart is
+    # safe. With DEMO_MODE=false only reference data (roles, commodities,
+    # markets, quality parameters) is loaded, which every deployment needs;
+    # the demo accounts, price history and sample trade are not.
+    command: >
+      sh -c "alembic upgrade head &&
+             if [ \"${SEED_ON_START:-true}\" = \"false\" ]; then
+               echo 'seed skipped (SEED_ON_START=false)';
+             elif [ \"${DEMO_MODE:-true}\" = \"true\" ]; then
+               python -m app.db.seed;
+             else
+               python -m app.db.seed --no-demo;
+             fi &&
+             uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8000/ready"]
+      interval: 15s
+      timeout: 5s
+      # Seeding 120 days of prices is the slow part of a cold start.
+      start_period: 90s
+      retries: 5
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-}
+        VITE_BACKEND_ORIGIN: ${VITE_BACKEND_ORIGIN:-}
+        VITE_SHOW_DEMO_ACCOUNTS: ${VITE_SHOW_DEMO_ACCOUNTS:-${DEMO_MODE:-true}}
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:8080"
+
+volumes:
+  pgdata:
+  media:

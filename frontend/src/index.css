@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+/*
+ * Devanagari needs a font with proper conjunct support. The stack below asks the
+ * platform first (Noto Sans Devanagari is usually present on Android, which is
+ * where most farmers will use this) and falls back cleanly.
+ */
+:root {
+  --font-sans:
+    'Noto Sans', 'Noto Sans Devanagari', system-ui, -apple-system, 'Segoe UI', Roboto,
+    'Helvetica Neue', Arial, sans-serif;
+  color-scheme: light;
+}
+
+html {
+  font-family: var(--font-sans);
+  /* Prevent iOS from inflating text in landscape. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #fafaf9;
+  color: #1c1917;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Keep number columns from jittering as digits change. */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
